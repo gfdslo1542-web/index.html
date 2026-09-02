@@ -1,0 +1,910 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0">
+<title>مصاريفي</title>
+<style>
+  :root {
+    --bg: #f5f4f0;
+    --card: #ffffff;
+    --text: #1c1c1a;
+    --muted: #6f6e68;
+    --border: #e4e2da;
+    --accent: #185fa5;
+    --danger: #a32d2d;
+    --success: #0f6e56;
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0;
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Tahoma, sans-serif;
+    background: var(--bg);
+    color: var(--text);
+    padding: 16px;
+    padding-bottom: 60px;
+  }
+  h1 {
+    font-size: 20px;
+    font-weight: 600;
+    margin: 4px 0 16px;
+  }
+  .card {
+    background: var(--card);
+    border: 1px solid var(--border);
+    border-radius: 14px;
+    padding: 16px;
+    margin-bottom: 16px;
+  }
+  .today-label {
+    font-size: 13px;
+    color: var(--muted);
+    margin-bottom: 10px;
+  }
+  input, select {
+    width: 100%;
+    height: 42px;
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    padding: 0 12px;
+    font-size: 15px;
+    background: #fafaf8;
+    color: var(--text);
+    outline: none;
+  }
+  input:focus, select:focus {
+    border-color: var(--accent);
+  }
+  .row { display: flex; gap: 8px; margin-bottom: 10px; }
+  .row .amount { flex: 1; }
+  .row .desc { flex: 1.4; }
+  .full-row { margin-bottom: 10px; }
+  button.add, button.save-budget, button.link-btn {
+    width: 100%;
+    height: 44px;
+    border: none;
+    border-radius: 10px;
+    background: var(--accent);
+    color: #fff;
+    font-size: 15px;
+    font-weight: 600;
+    cursor: pointer;
+  }
+  button.add:active, button.save-budget:active, button.link-btn:active { opacity: 0.85; }
+  button.link-btn {
+    background: transparent;
+    color: var(--accent);
+    border: 1px solid var(--border);
+    height: 40px;
+    font-weight: 500;
+  }
+  .err {
+    display: none;
+    color: var(--danger);
+    font-size: 13px;
+    margin-top: 8px;
+  }
+  .item {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 10px 0;
+    border-bottom: 1px solid var(--border);
+  }
+  .item:last-child { border-bottom: none; }
+  .item .desc-main { font-size: 14px; }
+  .item .cat-tag { font-size: 12px; color: var(--muted); margin-top: 2px; }
+  .item .right { display: flex; align-items: center; gap: 10px; }
+  .item .amt { font-size: 14px; font-weight: 600; }
+  .del-btn {
+    border: none;
+    background: transparent;
+    color: var(--muted);
+    font-size: 18px;
+    line-height: 1;
+    padding: 4px 6px;
+    cursor: pointer;
+  }
+  .empty { font-size: 13px; color: var(--muted); padding: 6px 0; }
+  .totals {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 12px;
+    margin-bottom: 16px;
+  }
+  .totals .box {
+    background: var(--card);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    padding: 14px;
+  }
+  .totals .box .lbl { font-size: 12px; color: var(--muted); margin-bottom: 4px; }
+  .totals .box .val { font-size: 21px; font-weight: 700; }
+  .totals .box .val.negative { color: var(--danger); }
+  .totals .box .val.positive { color: var(--success); }
+  .section-title {
+    font-size: 14px;
+    font-weight: 600;
+    margin: 0 0 8px;
+  }
+  .cat-row, .day-row {
+    display: flex;
+    justify-content: space-between;
+    padding: 7px 0;
+    border-bottom: 1px solid var(--border);
+    font-size: 14px;
+  }
+  .cat-row:last-child, .day-row:last-child { border-bottom: none; }
+  .cat-row .name { color: var(--muted); }
+  .day-row.today { font-weight: 600; }
+  .day-row.today .name { color: var(--text); }
+  .day-row .name { color: var(--muted); }
+  .budget-note {
+    font-size: 12px;
+    color: var(--muted);
+    margin-top: 6px;
+  }
+  .manage-main {
+    border-bottom: 1px solid var(--border);
+    padding: 10px 0;
+  }
+  .manage-main:last-child { border-bottom: none; }
+  .manage-main-row {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  }
+  .manage-main-row .mname { flex: 1; font-size: 14px; font-weight: 500; }
+  .icon-btn {
+    border: none;
+    background: transparent;
+    color: var(--muted);
+    font-size: 15px;
+    padding: 4px 8px;
+    cursor: pointer;
+  }
+  .icon-btn.danger { color: var(--danger); }
+  .sub-list { margin-top: 6px; padding-right: 14px; }
+  .sub-row {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 5px 0;
+    font-size: 13px;
+  }
+  .sub-row .sname { flex: 1; color: var(--muted); }
+  .edit-row {
+    display: flex;
+    gap: 6px;
+    margin-top: 6px;
+  }
+  .edit-row input { height: 38px; font-size: 14px; }
+  .edit-row button { height: 38px; width: auto; padding: 0 12px; font-size: 13px; }
+  .add-sub-btn {
+    background: transparent;
+    color: var(--accent);
+    border: none;
+    font-size: 13px;
+    padding: 4px 0;
+    cursor: pointer;
+    width: auto;
+    height: auto;
+  }
+</style>
+</head>
+<body>
+
+<h1>مصاريفي</h1>
+
+<div class="card">
+  <div class="section-title" id="budgetLabel">مبلغ الشهر</div>
+  <div class="full-row">
+    <input type="number" id="budgetInput" placeholder="اكتب المبلغ اللي معاك من اول الشهر" inputmode="decimal" />
+  </div>
+  <button class="save-budget" id="saveBudgetBtn">حفظ مبلغ الشهر</button>
+  <div class="budget-note" id="budgetNote"></div>
+</div>
+
+<div class="card">
+  <div class="today-label" id="todayLabel">اليوم</div>
+
+  <div class="full-row">
+    <select id="category"></select>
+  </div>
+  <div class="full-row" id="newCatRow" style="display:none;">
+    <input type="text" id="newCatInput" placeholder="اكتب اسم النوع الجديد" />
+  </div>
+
+  <div class="full-row" id="subCatWrap">
+    <select id="subcategory"></select>
+  </div>
+  <div class="full-row" id="newSubCatRow" style="display:none;">
+    <input type="text" id="newSubCatInput" placeholder="اكتب اسم التصنيف الفرعي الجديد" />
+  </div>
+
+  <div class="row">
+    <input type="number" class="amount" id="amount" placeholder="المبلغ (جنيه)" inputmode="decimal" />
+    <input type="text" class="desc" id="desc" placeholder="اتصرف في ايه؟" />
+  </div>
+
+  <button class="add" id="addBtn">+ ضيف مصروف</button>
+  <div class="err" id="errMsg"></div>
+</div>
+
+<div class="card" id="todayListCard">
+  <div class="section-title">مصاريف النهاردة</div>
+  <div id="todayList"></div>
+</div>
+
+<div class="totals">
+  <div class="box">
+    <div class="lbl">إجمالي النهاردة</div>
+    <div class="val" id="todayTotal">0 ج.م</div>
+  </div>
+  <div class="box">
+    <div class="lbl">إجمالي الشهر</div>
+    <div class="val" id="monthTotal">0 ج.م</div>
+  </div>
+</div>
+
+<div class="totals">
+  <div class="box">
+    <div class="lbl" id="remainingLbl">الباقي من مبلغ الشهر</div>
+    <div class="val" id="remainingVal">-</div>
+  </div>
+</div>
+
+<div class="card">
+  <div class="section-title">تقسيم النهاردة حسب النوع</div>
+  <div id="todayByCat"></div>
+</div>
+
+<div class="card">
+  <div class="section-title">تقسيم الشهر حسب النوع</div>
+  <div id="monthByCat"></div>
+</div>
+
+<div class="card">
+  <div class="section-title">أيام الشهر</div>
+  <div id="daysList"></div>
+</div>
+
+<div class="card">
+  <div class="section-title">تعديل الأنواع والتصنيفات الفرعية</div>
+  <div id="catManager"></div>
+</div>
+
+<div class="card">
+  <div class="section-title">نسخة احتياطية</div>
+  <button class="link-btn" id="exportBtn" style="margin-bottom: 8px;">تصدير نسخة احتياطية</button>
+  <button class="link-btn" id="importBtn">استيراد نسخة احتياطية</button>
+  <input type="file" id="importFile" accept="application/json" style="display:none;" />
+  <div class="budget-note" id="backupNote"></div>
+</div>
+
+<script>
+function pad(n){ return n < 10 ? '0'+n : ''+n; }
+function todayKey(){
+  const d = new Date();
+  return d.getFullYear()+'-'+pad(d.getMonth()+1)+'-'+pad(d.getDate());
+}
+function currentMonthKey(){
+  const d = new Date();
+  return d.getFullYear()+'-'+pad(d.getMonth()+1);
+}
+function monthPrefix(){
+  return 'expenses-'+currentMonthKey()+'-';
+}
+function isLastDayOfMonth(){
+  const d = new Date();
+  const lastDay = new Date(d.getFullYear(), d.getMonth()+1, 0).getDate();
+  return d.getDate() === lastDay;
+}
+const STORAGE_KEY_PREFIX = 'expenses-';
+const CATS_KEY = 'expense-categories-v2';
+const BUDGET_KEY_PREFIX = 'budget-';
+const tKey = STORAGE_KEY_PREFIX + todayKey();
+const bKey = BUDGET_KEY_PREFIX + currentMonthKey();
+const NEW_VALUE = '__new__';
+const NONE_VALUE = '__none__';
+
+const arabicDays = ['الأحد','الإثنين','الثلاثاء','الأربعاء','الخميس','الجمعة','السبت'];
+const arabicMonths = ['يناير','فبراير','مارس','أبريل','مايو','يونيو','يوليو','أغسطس','سبتمبر','أكتوبر','نوفمبر','ديسمبر'];
+
+function fmtDayLabel(dateStr){
+  const parts = dateStr.split('-').map(Number);
+  const d = new Date(parts[0], parts[1]-1, parts[2]);
+  return arabicDays[d.getDay()] + ' ' + parts[2] + ' ' + arabicMonths[parts[1]-1];
+}
+function fmtMonthLabel(){
+  const d = new Date();
+  return arabicMonths[d.getMonth()] + ' ' + d.getFullYear();
+}
+function money(n){
+  return (Math.round(n*100)/100) + ' ج.م';
+}
+function esc(s){ return String(s).replace(/"/g,'').replace(/</g,''); }
+
+function getAllExpenseKeys(){
+  const keys = [];
+  for(let i=0; i<localStorage.length; i++){
+    const k = localStorage.key(i);
+    if(k && k.indexOf(STORAGE_KEY_PREFIX) === 0) keys.push(k);
+  }
+  return keys;
+}
+
+function getDay(key){
+  try{
+    const raw = localStorage.getItem(key);
+    return raw ? JSON.parse(raw) : [];
+  }catch(e){ return []; }
+}
+function setDay(key, items){
+  try{ localStorage.setItem(key, JSON.stringify(items)); }catch(e){}
+}
+
+function getBudget(){
+  try{
+    const raw = localStorage.getItem(bKey);
+    return raw ? parseFloat(raw) : null;
+  }catch(e){ return null; }
+}
+function setBudget(v){
+  try{ localStorage.setItem(bKey, String(v)); }catch(e){}
+}
+
+// categories structure: { "مواصلات": ["أوبر","بنزين"], "أكل": [] }
+function getCategoriesObj(){
+  try{
+    const raw = localStorage.getItem(CATS_KEY);
+    if(raw !== null){
+      const parsed = JSON.parse(raw);
+      if(parsed && typeof parsed === 'object' && !Array.isArray(parsed)) return parsed;
+    }
+  }catch(e){}
+  try{
+    const oldRaw = localStorage.getItem('expense-categories');
+    if(oldRaw){
+      const oldList = JSON.parse(oldRaw);
+      if(Array.isArray(oldList)){
+        const obj = {};
+        oldList.forEach(function(c){ obj[c] = []; });
+        if(!('مواصلات' in obj)) obj['مواصلات'] = [];
+        if(!('أكل' in obj)) obj['أكل'] = [];
+        saveCategoriesObj(obj);
+        return obj;
+      }
+    }
+  }catch(e){}
+  const seeded = { 'مواصلات': [], 'أكل': [] };
+  saveCategoriesObj(seeded);
+  return seeded;
+}
+function saveCategoriesObj(obj){
+  localStorage.setItem(CATS_KEY, JSON.stringify(obj));
+}
+function saveMainCategory(main){
+  const obj = getCategoriesObj();
+  if(!(main in obj)) obj[main] = [];
+  saveCategoriesObj(obj);
+}
+function saveSubCategory(main, sub){
+  const obj = getCategoriesObj();
+  if(!(main in obj)) obj[main] = [];
+  if(obj[main].indexOf(sub) === -1) obj[main].push(sub);
+  saveCategoriesObj(obj);
+}
+
+function renameMainCategory(oldName, newName){
+  if(!newName || newName === oldName) return;
+  const obj = getCategoriesObj();
+  const subs = obj[oldName] || [];
+  delete obj[oldName];
+  if(obj[newName]){
+    // merge subs if target already exists
+    subs.forEach(function(s){ if(obj[newName].indexOf(s) === -1) obj[newName].push(s); });
+  } else {
+    obj[newName] = subs;
+  }
+  saveCategoriesObj(obj);
+  // update historical items
+  getAllExpenseKeys().forEach(function(k){
+    const items = getDay(k);
+    let changed = false;
+    items.forEach(function(it){
+      if(it.category === oldName){ it.category = newName; changed = true; }
+    });
+    if(changed) setDay(k, items);
+  });
+}
+function deleteMainCategory(name){
+  const obj = getCategoriesObj();
+  delete obj[name];
+  saveCategoriesObj(obj);
+}
+function renameSubCategory(main, oldSub, newSub){
+  if(!newSub || newSub === oldSub) return;
+  const obj = getCategoriesObj();
+  const subs = obj[main] || [];
+  const idx = subs.indexOf(oldSub);
+  if(idx !== -1){
+    if(subs.indexOf(newSub) === -1){
+      subs[idx] = newSub;
+    } else {
+      subs.splice(idx, 1);
+    }
+  }
+  obj[main] = subs;
+  saveCategoriesObj(obj);
+  getAllExpenseKeys().forEach(function(k){
+    const items = getDay(k);
+    let changed = false;
+    items.forEach(function(it){
+      if(it.category === main && it.subcategory === oldSub){ it.subcategory = newSub; changed = true; }
+    });
+    if(changed) setDay(k, items);
+  });
+}
+function deleteSubCategory(main, sub){
+  const obj = getCategoriesObj();
+  const subs = obj[main] || [];
+  const idx = subs.indexOf(sub);
+  if(idx !== -1) subs.splice(idx, 1);
+  obj[main] = subs;
+  saveCategoriesObj(obj);
+}
+
+function refreshMainSelect(selectValue){
+  const obj = getCategoriesObj();
+  const sel = document.getElementById('category');
+  const mains = Object.keys(obj);
+  let html = mains.map(function(m){
+    return '<option value="'+esc(m)+'">'+m+'</option>';
+  }).join('');
+  html += '<option value="'+NEW_VALUE+'">+ ضيف نوع جديد</option>';
+  sel.innerHTML = html;
+  if(mains.length === 0){
+    sel.value = NEW_VALUE;
+  } else {
+    sel.value = (selectValue && mains.indexOf(selectValue) !== -1) ? selectValue : mains[0];
+  }
+  onCategoryChanged();
+}
+
+function refreshSubSelect(main, selectValue){
+  const obj = getCategoriesObj();
+  const subs = obj[main] || [];
+  const sel = document.getElementById('subcategory');
+  let html = '<option value="'+NONE_VALUE+'">بدون تصنيف فرعي</option>';
+  html += subs.map(function(s){
+    return '<option value="'+esc(s)+'">'+s+'</option>';
+  }).join('');
+  html += '<option value="'+NEW_VALUE+'">+ ضيف تصنيف فرعي جديد</option>';
+  sel.innerHTML = html;
+  sel.value = (selectValue && subs.indexOf(selectValue) !== -1) ? selectValue : NONE_VALUE;
+}
+
+function getMonthKeys(){
+  const prefix = monthPrefix();
+  const keys = [];
+  for(let i=0; i<localStorage.length; i++){
+    const k = localStorage.key(i);
+    if(k && k.indexOf(prefix) === 0) keys.push(k);
+  }
+  return keys.sort();
+}
+
+function groupByCategory(items){
+  const map = {};
+  items.forEach(function(it){
+    const c = it.category || 'أخرى';
+    map[c] = (map[c] || 0) + it.amount;
+  });
+  return map;
+}
+
+function renderCategoryBreakdown(elId, items){
+  const map = groupByCategory(items);
+  const cats = Object.keys(map).sort(function(a,b){ return map[b]-map[a]; });
+  const el = document.getElementById(elId);
+  if(cats.length === 0){
+    el.innerHTML = '<div class="empty">مفيش مصاريف لسه</div>';
+    return;
+  }
+  el.innerHTML = cats.map(function(c){
+    return '<div class="cat-row"><span class="name">'+c+'</span><span>'+money(map[c])+'</span></div>';
+  }).join('');
+}
+
+function renderToday(){
+  const items = getDay(tKey);
+  const list = document.getElementById('todayList');
+  if(items.length === 0){
+    list.innerHTML = '<div class="empty">لسه مفيش مصاريف مسجلة النهاردة</div>';
+  } else {
+    list.innerHTML = items.map(function(it, i){
+      const tag = it.subcategory ? (it.category + ' · ' + it.subcategory) : it.category;
+      return '<div class="item">'+
+        '<div><div class="desc-main">'+it.desc+'</div><div class="cat-tag">'+tag+'</div></div>'+
+        '<div class="right"><span class="amt">'+money(it.amount)+'</span>'+
+        '<button class="del-btn" data-i="'+i+'" aria-label="حذف">×</button></div>'+
+      '</div>';
+    }).join('');
+    Array.prototype.forEach.call(list.querySelectorAll('.del-btn'), function(btn){
+      btn.addEventListener('click', function(){
+        const idx = parseInt(btn.getAttribute('data-i'));
+        const cur = getDay(tKey);
+        cur.splice(idx, 1);
+        setDay(tKey, cur);
+        renderAll();
+      });
+    });
+  }
+  const total = items.reduce(function(s,it){ return s+it.amount; }, 0);
+  document.getElementById('todayTotal').textContent = money(total);
+  document.getElementById('todayLabel').textContent = fmtDayLabel(todayKey());
+  renderCategoryBreakdown('todayByCat', items);
+}
+
+function renderMonth(){
+  const keys = getMonthKeys();
+  let monthSum = 0;
+  let allItems = [];
+  const daysList = document.getElementById('daysList');
+  if(keys.length === 0){
+    daysList.innerHTML = '<div class="empty">لسه مفيش أيام مسجلة</div>';
+  } else {
+    let rows = '';
+    keys.forEach(function(k){
+      const dateStr = k.replace(STORAGE_KEY_PREFIX, '');
+      const items = getDay(k);
+      allItems = allItems.concat(items);
+      const dayTotal = items.reduce(function(s,it){ return s+it.amount; }, 0);
+      monthSum += dayTotal;
+      const isToday = k === tKey;
+      rows += '<div class="day-row'+(isToday?' today':'')+'"><span class="name">'+fmtDayLabel(dateStr)+'</span><span>'+money(dayTotal)+'</span></div>';
+    });
+    daysList.innerHTML = rows;
+  }
+  document.getElementById('monthTotal').textContent = money(monthSum);
+  renderCategoryBreakdown('monthByCat', allItems);
+  return monthSum;
+}
+
+function renderBudget(monthSum){
+  const budget = getBudget();
+  document.getElementById('budgetLabel').textContent = 'مبلغ شهر ' + fmtMonthLabel();
+  const remainingLbl = document.getElementById('remainingLbl');
+  const remainingVal = document.getElementById('remainingVal');
+  const budgetNote = document.getElementById('budgetNote');
+  const budgetInput = document.getElementById('budgetInput');
+
+  if(budget === null || isNaN(budget)){
+    remainingLbl.textContent = 'الباقي من مبلغ الشهر';
+    remainingVal.textContent = 'اكتب مبلغ الشهر الأول';
+    remainingVal.className = 'val';
+    budgetNote.textContent = '';
+    return;
+  }
+
+  budgetInput.value = budget;
+  const remaining = budget - monthSum;
+  const lastDay = isLastDayOfMonth();
+
+  remainingLbl.textContent = lastDay ? 'وفرت من الشهر ده' : 'الباقي من مبلغ الشهر';
+  remainingVal.textContent = money(remaining);
+  remainingVal.className = 'val ' + (remaining < 0 ? 'negative' : 'positive');
+
+  if(remaining < 0){
+    budgetNote.textContent = 'صرفت أكتر من مبلغ الشهر بـ ' + money(Math.abs(remaining));
+  } else if(lastDay){
+    budgetNote.textContent = 'ده اللي فاضل معاك آخر الشهر';
+  } else {
+    budgetNote.textContent = '';
+  }
+}
+
+function renderCatManager(){
+  const obj = getCategoriesObj();
+  const mains = Object.keys(obj);
+  const el = document.getElementById('catManager');
+  if(mains.length === 0){
+    el.innerHTML = '<div class="empty">مفيش أنواع مسجلة لسه</div>';
+    return;
+  }
+  el.innerHTML = mains.map(function(m){
+    const subs = obj[m] || [];
+    const subsHtml = subs.map(function(s){
+      return '<div class="sub-row" data-main="'+esc(m)+'" data-sub="'+esc(s)+'">'+
+        '<span class="sname">'+s+'</span>'+
+        '<button class="icon-btn edit-sub-btn" aria-label="تعديل">تعديل</button>'+
+        '<button class="icon-btn danger del-sub-btn" aria-label="حذف">حذف</button>'+
+      '</div>';
+    }).join('');
+    return '<div class="manage-main" data-main="'+esc(m)+'">'+
+      '<div class="manage-main-row">'+
+        '<span class="mname">'+m+'</span>'+
+        '<button class="icon-btn edit-main-btn" aria-label="تعديل">تعديل</button>'+
+        '<button class="icon-btn danger del-main-btn" aria-label="حذف">حذف</button>'+
+      '</div>'+
+      '<div class="sub-list">'+subsHtml+
+        '<button class="add-sub-btn">+ ضيف تصنيف فرعي</button>'+
+      '</div>'+
+    '</div>';
+  }).join('');
+
+  wireCatManagerEvents();
+}
+
+function wireCatManagerEvents(){
+  const el = document.getElementById('catManager');
+
+  Array.prototype.forEach.call(el.querySelectorAll('.edit-main-btn'), function(btn){
+    btn.addEventListener('click', function(){
+      const wrap = btn.closest('.manage-main');
+      const main = wrap.getAttribute('data-main');
+      const row = wrap.querySelector('.manage-main-row');
+      row.insertAdjacentHTML('afterend',
+        '<div class="edit-row"><input type="text" class="edit-main-input" value="'+esc(main)+'" />'+
+        '<button class="save-main-edit">حفظ</button>'+
+        '<button class="cancel-main-edit">إلغاء</button></div>');
+      const editRow = wrap.querySelector('.edit-row');
+      editRow.querySelector('.save-main-edit').addEventListener('click', function(){
+        const newName = editRow.querySelector('.edit-main-input').value.trim();
+        if(newName){
+          renameMainCategory(main, newName);
+          refreshMainSelect(newName);
+          renderCatManager();
+          renderAll();
+        }
+      });
+      editRow.querySelector('.cancel-main-edit').addEventListener('click', function(){
+        editRow.remove();
+      });
+    });
+  });
+
+  Array.prototype.forEach.call(el.querySelectorAll('.del-main-btn'), function(btn){
+    btn.addEventListener('click', function(){
+      const wrap = btn.closest('.manage-main');
+      const main = wrap.getAttribute('data-main');
+      if(confirm('تحذف نوع "'+main+'"؟ المصاريف القديمة هتفضل زي ما هي بس النوع مش هيظهر تاني في الاختيار.')){
+        deleteMainCategory(main);
+        refreshMainSelect();
+        renderCatManager();
+        renderAll();
+      }
+    });
+  });
+
+  Array.prototype.forEach.call(el.querySelectorAll('.edit-sub-btn'), function(btn){
+    btn.addEventListener('click', function(){
+      const row = btn.closest('.sub-row');
+      const main = row.getAttribute('data-main');
+      const sub = row.getAttribute('data-sub');
+      row.insertAdjacentHTML('afterend',
+        '<div class="edit-row"><input type="text" class="edit-sub-input" value="'+esc(sub)+'" />'+
+        '<button class="save-sub-edit">حفظ</button>'+
+        '<button class="cancel-sub-edit">إلغاء</button></div>');
+      const editRow = row.nextElementSibling;
+      editRow.querySelector('.save-sub-edit').addEventListener('click', function(){
+        const newName = editRow.querySelector('.edit-sub-input').value.trim();
+        if(newName){
+          renameSubCategory(main, sub, newName);
+          if(categoryEl.value === main) refreshSubSelect(main, newName);
+          renderCatManager();
+          renderAll();
+        }
+      });
+      editRow.querySelector('.cancel-sub-edit').addEventListener('click', function(){
+        editRow.remove();
+      });
+    });
+  });
+
+  Array.prototype.forEach.call(el.querySelectorAll('.del-sub-btn'), function(btn){
+    btn.addEventListener('click', function(){
+      const row = btn.closest('.sub-row');
+      const main = row.getAttribute('data-main');
+      const sub = row.getAttribute('data-sub');
+      if(confirm('تحذف التصنيف الفرعي "'+sub+'"؟')){
+        deleteSubCategory(main, sub);
+        if(categoryEl.value === main) refreshSubSelect(main);
+        renderCatManager();
+      }
+    });
+  });
+
+  Array.prototype.forEach.call(el.querySelectorAll('.add-sub-btn'), function(btn){
+    btn.addEventListener('click', function(){
+      const wrap = btn.closest('.manage-main');
+      const main = wrap.getAttribute('data-main');
+      if(btn.previousElementSibling && btn.previousElementSibling.classList && btn.previousElementSibling.classList.contains('edit-row')) return;
+      btn.insertAdjacentHTML('beforebegin',
+        '<div class="edit-row"><input type="text" class="new-sub-input" placeholder="اسم التصنيف الفرعي" />'+
+        '<button class="save-new-sub">ضيف</button>'+
+        '<button class="cancel-new-sub">إلغاء</button></div>');
+      const editRow = btn.previousElementSibling;
+      editRow.querySelector('.save-new-sub').addEventListener('click', function(){
+        const name = editRow.querySelector('.new-sub-input').value.trim();
+        if(name){
+          saveSubCategory(main, name);
+          if(categoryEl.value === main) refreshSubSelect(main);
+          renderCatManager();
+        }
+      });
+      editRow.querySelector('.cancel-new-sub').addEventListener('click', function(){
+        editRow.remove();
+      });
+    });
+  });
+}
+
+function renderAll(){
+  renderToday();
+  const monthSum = renderMonth();
+  renderBudget(monthSum);
+}
+
+document.getElementById('saveBudgetBtn').addEventListener('click', function(){
+  const budgetInput = document.getElementById('budgetInput');
+  const v = parseFloat(budgetInput.value);
+  if(!v || v <= 0){
+    document.getElementById('budgetNote').textContent = 'اكتب مبلغ صحيح الأول';
+    return;
+  }
+  setBudget(v);
+  renderAll();
+});
+
+const categoryEl = document.getElementById('category');
+const subcategoryEl = document.getElementById('subcategory');
+const descEl = document.getElementById('desc');
+const newCatRow = document.getElementById('newCatRow');
+const newCatInput = document.getElementById('newCatInput');
+const newSubCatRow = document.getElementById('newSubCatRow');
+const newSubCatInput = document.getElementById('newSubCatInput');
+let descTouched = false;
+
+function applyDescFromSelection(){
+  if(descTouched && descEl.value.trim() !== '') return;
+  let label = '';
+  if(categoryEl.value !== NEW_VALUE) label = categoryEl.value;
+  if(subcategoryEl.value !== NEW_VALUE && subcategoryEl.value !== NONE_VALUE && subcategoryEl.value){
+    label = subcategoryEl.value;
+  }
+  if(label) descEl.value = label;
+}
+
+function onCategoryChanged(){
+  if(categoryEl.value === NEW_VALUE){
+    newCatRow.style.display = 'block';
+    newCatInput.value = '';
+    newSubCatRow.style.display = 'none';
+    subcategoryEl.innerHTML = '<option value="'+NONE_VALUE+'">بدون تصنيف فرعي</option>';
+  } else {
+    newCatRow.style.display = 'none';
+    refreshSubSelect(categoryEl.value);
+    newSubCatRow.style.display = 'none';
+    descTouched = false;
+    applyDescFromSelection();
+  }
+}
+
+categoryEl.addEventListener('change', function(){
+  onCategoryChanged();
+  if(categoryEl.value === NEW_VALUE) newCatInput.focus();
+});
+
+subcategoryEl.addEventListener('change', function(){
+  if(subcategoryEl.value === NEW_VALUE){
+    newSubCatRow.style.display = 'block';
+    newSubCatInput.value = '';
+    newSubCatInput.focus();
+  } else {
+    newSubCatRow.style.display = 'none';
+    descTouched = false;
+    applyDescFromSelection();
+  }
+});
+
+descEl.addEventListener('input', function(){
+  descTouched = true;
+});
+
+document.getElementById('addBtn').addEventListener('click', function(){
+  const amountEl = document.getElementById('amount');
+  const errEl = document.getElementById('errMsg');
+  const amount = parseFloat(amountEl.value);
+  const desc = descEl.value.trim();
+
+  let main = categoryEl.value;
+  if(main === NEW_VALUE){
+    main = newCatInput.value.trim();
+  }
+
+  let sub = subcategoryEl.value;
+  if(sub === NEW_VALUE){
+    sub = newSubCatInput.value.trim();
+  } else if(sub === NONE_VALUE){
+    sub = '';
+  }
+
+  if(!amount || amount <= 0 || !desc || !main){
+    errEl.style.display = 'block';
+    errEl.textContent = 'اكتب النوع والمبلغ والوصف الأول';
+    return;
+  }
+  errEl.style.display = 'none';
+
+  saveMainCategory(main);
+  if(sub) saveSubCategory(main, sub);
+
+  const cur = getDay(tKey);
+  cur.push({ amount: amount, desc: desc, category: main, subcategory: sub });
+  setDay(tKey, cur);
+
+  amountEl.value = '';
+  descEl.value = '';
+  descTouched = false;
+  newCatRow.style.display = 'none';
+  newSubCatRow.style.display = 'none';
+
+  refreshMainSelect(main);
+  subcategoryEl.value = sub ? sub : NONE_VALUE;
+
+  renderCatManager();
+  renderAll();
+});
+
+document.getElementById('exportBtn').addEventListener('click', function(){
+  const data = {};
+  for(let i=0; i<localStorage.length; i++){
+    const k = localStorage.key(i);
+    data[k] = localStorage.getItem(k);
+  }
+  const blob = new Blob([JSON.stringify(data)], { type: 'application/json' });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = 'مصاريفي-نسخة-احتياطية-' + todayKey() + '.json';
+  document.body.appendChild(a);
+  a.click();
+  document.body.removeChild(a);
+  URL.revokeObjectURL(url);
+  document.getElementById('backupNote').textContent = 'اتحفظت النسخة الاحتياطية، خزنها في مكان مأمون.';
+});
+
+document.getElementById('importBtn').addEventListener('click', function(){
+  document.getElementById('importFile').click();
+});
+
+document.getElementById('importFile').addEventListener('change', function(e){
+  const file = e.target.files[0];
+  if(!file) return;
+  const reader = new FileReader();
+  reader.onload = function(evt){
+    try{
+      const data = JSON.parse(evt.target.result);
+      Object.keys(data).forEach(function(k){
+        localStorage.setItem(k, data[k]);
+      });
+      document.getElementById('backupNote').textContent = 'تم استرجاع البيانات بنجاح.';
+      refreshMainSelect();
+      renderCatManager();
+      renderAll();
+    }catch(err){
+      document.getElementById('backupNote').textContent = 'الملف مش سليم، جرب ملف تاني.';
+    }
+  };
+  reader.readAsText(file);
+  e.target.value = '';
+});
+
+refreshMainSelect();
+renderCatManager();
+renderAll();
+</script>
+</body>
+</html>
