@@ -251,8 +251,7 @@
   </div>
 
   <div class="row">
-    <input type="number" class="amount" id="amount" placeholder="المبلغ (جنيه)" inputmode="decimal" />
-    <input type="text" class="desc" id="desc" placeholder="اتصرف في ايه؟" />
+    <input type="number" class="amount" id="amount" placeholder="المبلغ (جنيه)" inputmode="decimal" style="flex:1;" />
   </div>
 
   <button class="add" id="addBtn">+ ضيف مصروف</button>
@@ -554,9 +553,9 @@ function renderToday(){
     list.innerHTML = '<div class="empty">لسه مفيش مصاريف مسجلة النهاردة</div>';
   } else {
     list.innerHTML = items.map(function(it, i){
-      const tag = it.subcategory ? (it.category + ' · ' + it.subcategory) : it.category;
+      const subLine = it.subcategory ? '<div class="cat-tag">'+it.subcategory+'</div>' : '';
       return '<div class="item">'+
-        '<div><div class="desc-main">'+it.desc+'</div><div class="cat-tag">'+tag+'</div></div>'+
+        '<div><div class="desc-main">'+it.category+'</div>'+subLine+'</div>'+
         '<div class="right"><span class="amt">'+money(it.amount)+'</span>'+
         '<button class="del-btn" data-i="'+i+'" aria-label="حذف">×</button></div>'+
       '</div>';
@@ -790,22 +789,10 @@ document.getElementById('saveBudgetBtn').addEventListener('click', function(){
 
 const categoryEl = document.getElementById('category');
 const subcategoryEl = document.getElementById('subcategory');
-const descEl = document.getElementById('desc');
 const newCatRow = document.getElementById('newCatRow');
 const newCatInput = document.getElementById('newCatInput');
 const newSubCatRow = document.getElementById('newSubCatRow');
 const newSubCatInput = document.getElementById('newSubCatInput');
-let descTouched = false;
-
-function applyDescFromSelection(){
-  if(descTouched && descEl.value.trim() !== '') return;
-  let label = '';
-  if(categoryEl.value !== NEW_VALUE) label = categoryEl.value;
-  if(subcategoryEl.value !== NEW_VALUE && subcategoryEl.value !== NONE_VALUE && subcategoryEl.value){
-    label = subcategoryEl.value;
-  }
-  if(label) descEl.value = label;
-}
 
 function onCategoryChanged(){
   if(categoryEl.value === NEW_VALUE){
@@ -817,8 +804,6 @@ function onCategoryChanged(){
     newCatRow.style.display = 'none';
     refreshSubSelect(categoryEl.value);
     newSubCatRow.style.display = 'none';
-    descTouched = false;
-    applyDescFromSelection();
   }
 }
 
@@ -834,20 +819,13 @@ subcategoryEl.addEventListener('change', function(){
     newSubCatInput.focus();
   } else {
     newSubCatRow.style.display = 'none';
-    descTouched = false;
-    applyDescFromSelection();
   }
-});
-
-descEl.addEventListener('input', function(){
-  descTouched = true;
 });
 
 document.getElementById('addBtn').addEventListener('click', function(){
   const amountEl = document.getElementById('amount');
   const errEl = document.getElementById('errMsg');
   const amount = parseFloat(amountEl.value);
-  const desc = descEl.value.trim();
 
   let main = categoryEl.value;
   if(main === NEW_VALUE){
@@ -861,9 +839,9 @@ document.getElementById('addBtn').addEventListener('click', function(){
     sub = '';
   }
 
-  if(!amount || amount <= 0 || !desc || !main){
+  if(!amount || amount <= 0 || !main){
     errEl.style.display = 'block';
-    errEl.textContent = 'اكتب النوع والمبلغ والوصف الأول';
+    errEl.textContent = 'اكتب النوع والمبلغ الأول';
     return;
   }
   errEl.style.display = 'none';
@@ -872,12 +850,10 @@ document.getElementById('addBtn').addEventListener('click', function(){
   if(sub) saveSubCategory(main, sub);
 
   const cur = getDay(tKey);
-  cur.push({ amount: amount, desc: desc, category: main, subcategory: sub });
+  cur.push({ amount: amount, category: main, subcategory: sub });
   setDay(tKey, cur);
 
   amountEl.value = '';
-  descEl.value = '';
-  descTouched = false;
   newCatRow.style.display = 'none';
   newSubCatRow.style.display = 'none';
 
