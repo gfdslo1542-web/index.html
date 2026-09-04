@@ -144,6 +144,17 @@
     color: var(--muted);
     margin-top: 6px;
   }
+  .budget-display {
+    background: #eaf3fb;
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    padding: 16px;
+    text-align: center;
+    font-size: 28px;
+    font-weight: 700;
+    color: var(--accent);
+    margin-bottom: 12px;
+  }
   .manage-main {
     border-bottom: 1px solid var(--border);
     padding: 10px 0;
@@ -226,10 +237,18 @@
 
 <div class="card">
   <div class="section-title" id="budgetLabel">مبلغ الشهر</div>
-  <div class="full-row">
-    <input type="number" id="budgetInput" placeholder="اكتب المبلغ اللي معاك من اول الشهر" inputmode="decimal" />
+  <div class="budget-display" id="budgetDisplay">0 ج.م</div>
+  <div class="row">
+    <input type="number" id="budgetAddInput" placeholder="المبلغ اللي عايز تضيفه" inputmode="decimal" style="flex:1;" />
+    <button class="save-budget" id="addBudgetBtn" style="width:auto; padding:0 18px;">+ ضيف</button>
   </div>
-  <button class="save-budget" id="saveBudgetBtn">حفظ مبلغ الشهر</button>
+  <button class="link-btn" id="toggleResetBtn" style="margin-top:8px;">تحديد المبلغ من الأول</button>
+  <div id="resetBudgetRow" style="display:none; margin-top:10px;">
+    <div class="full-row">
+      <input type="number" id="budgetInput" placeholder="اكتب المبلغ بالكامل" inputmode="decimal" />
+    </div>
+    <button class="save-budget" id="saveBudgetBtn">حفظ المبلغ</button>
+  </div>
   <div class="budget-note" id="budgetNote"></div>
 </div>
 
@@ -607,17 +626,18 @@ function renderBudget(monthSum){
   const remainingLbl = document.getElementById('remainingLbl');
   const remainingVal = document.getElementById('remainingVal');
   const budgetNote = document.getElementById('budgetNote');
-  const budgetInput = document.getElementById('budgetInput');
+  const budgetDisplay = document.getElementById('budgetDisplay');
+
+  budgetDisplay.textContent = money(budget || 0);
 
   if(budget === null || isNaN(budget)){
     remainingLbl.textContent = 'الباقي من مبلغ الشهر';
-    remainingVal.textContent = 'اكتب مبلغ الشهر الأول';
+    remainingVal.textContent = 'اكتب أو ضيف مبلغ الشهر';
     remainingVal.className = 'val';
     budgetNote.textContent = '';
     return;
   }
 
-  budgetInput.value = budget;
   const remaining = budget - monthSum;
   const lastDay = isLastDayOfMonth();
 
@@ -784,7 +804,27 @@ document.getElementById('saveBudgetBtn').addEventListener('click', function(){
     return;
   }
   setBudget(v);
+  budgetInput.value = '';
+  document.getElementById('resetBudgetRow').style.display = 'none';
   renderAll();
+});
+
+document.getElementById('addBudgetBtn').addEventListener('click', function(){
+  const addInput = document.getElementById('budgetAddInput');
+  const v = parseFloat(addInput.value);
+  if(!v || v <= 0){
+    document.getElementById('budgetNote').textContent = 'اكتب مبلغ صحيح عشان تضيفه';
+    return;
+  }
+  const current = getBudget() || 0;
+  setBudget(current + v);
+  addInput.value = '';
+  renderAll();
+});
+
+document.getElementById('toggleResetBtn').addEventListener('click', function(){
+  const row = document.getElementById('resetBudgetRow');
+  row.style.display = row.style.display === 'none' ? 'block' : 'none';
 });
 
 const categoryEl = document.getElementById('category');
@@ -914,3 +954,4 @@ renderAll();
 </script>
 </body>
 </html>
+
