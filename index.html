@@ -211,6 +211,25 @@
   .cat-row.sub .name::before {
     content: "– ";
   }
+  details.cat-details {
+    border-bottom: 1px solid var(--border);
+  }
+  details.cat-details:last-child { border-bottom: none; }
+  details.cat-details summary {
+    display: flex;
+    justify-content: space-between;
+    padding: 7px 0;
+    font-size: 14px;
+    cursor: pointer;
+  }
+  details.cat-details summary .name { color: var(--muted); flex: 1; }
+  details.cat-details summary::after {
+    content: "▾";
+    font-size: 10px;
+    margin-right: 8px;
+    color: var(--muted);
+  }
+  .cat-details-body { padding-bottom: 6px; }
   details.day-details {
     border-bottom: 1px solid var(--border);
   }
@@ -576,10 +595,16 @@ function renderCategoryBreakdown(elId, items){
   el.innerHTML = cats.map(function(c){
     const subs = tree[c].subs;
     const subNames = Object.keys(subs).sort(function(a,b){ return subs[b]-subs[a]; });
+    if(subNames.length === 0){
+      return '<div class="cat-row"><span class="name">'+c+'</span><span>'+money(tree[c].total)+'</span></div>';
+    }
     const subRows = subNames.map(function(s){
       return '<div class="cat-row sub"><span class="name">'+s+'</span><span>'+money(subs[s])+'</span></div>';
     }).join('');
-    return '<div class="cat-row"><span class="name">'+c+'</span><span>'+money(tree[c].total)+'</span></div>' + subRows;
+    return '<details class="cat-details">'+
+      '<summary><span class="name">'+c+'</span><span>'+money(tree[c].total)+'</span></summary>'+
+      '<div class="cat-details-body">'+subRows+'</div>'+
+    '</details>';
   }).join('');
 }
 
