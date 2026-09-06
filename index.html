@@ -203,31 +203,40 @@
   }
   summary::-webkit-details-marker { display: none; }
   summary::marker { content: ""; }
-  table.days-table {
-    width: 100%;
-    border-collapse: collapse;
+  .cat-row.sub {
+    padding-right: 14px;
     font-size: 13px;
   }
-  table.days-table th, table.days-table td {
-    padding: 7px 6px;
-    text-align: center;
+  .cat-row.sub .name { color: var(--muted); }
+  .cat-row.sub .name::before {
+    content: "– ";
+  }
+  details.day-details {
     border-bottom: 1px solid var(--border);
   }
-  table.days-table th {
+  details.day-details:last-child { border-bottom: none; }
+  details.day-details summary {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 10px 0;
+    font-size: 14px;
+    cursor: pointer;
     color: var(--muted);
-    font-weight: 500;
-    font-size: 12px;
   }
-  table.days-table td.day-name {
-    text-align: right;
-    color: var(--muted);
-  }
-  table.days-table tr.today td.day-name {
+  details.day-details.today summary {
     color: var(--text);
     font-weight: 600;
   }
-  table.days-table tr.today td {
-    font-weight: 600;
+  details.day-details summary::after {
+    content: "▾";
+    font-size: 11px;
+    margin-right: 8px;
+    color: var(--muted);
+  }
+  details.day-details summary .day-name { flex: 1; text-align: right; }
+  .day-details-body {
+    padding: 0 0 12px 0;
   }
 </style>
 </head>
@@ -543,25 +552,34 @@ function getMonthKeys(){
   return keys.sort();
 }
 
-function groupByCategory(items){
-  const map = {};
+function buildCategoryTree(items){
+  const tree = {};
   items.forEach(function(it){
     const c = it.category || 'أخرى';
-    map[c] = (map[c] || 0) + it.amount;
+    if(!tree[c]) tree[c] = { total: 0, subs: {} };
+    tree[c].total += it.amount;
+    if(it.subcategory){
+      tree[c].subs[it.subcategory] = (tree[c].subs[it.subcategory] || 0) + it.amount;
+    }
   });
-  return map;
+  return tree;
 }
 
 function renderCategoryBreakdown(elId, items){
-  const map = groupByCategory(items);
-  const cats = Object.keys(map).sort(function(a,b){ return map[b]-map[a]; });
+  const tree = buildCategoryTree(items);
+  const cats = Object.keys(tree).sort(function(a,b){ return tree[b].total - tree[a].total; });
   const el = document.getElementById(elId);
   if(cats.length === 0){
     el.innerHTML = '<div class="empty">مفيش مصاريف لسه</div>';
     return;
   }
   el.innerHTML = cats.map(function(c){
-    return '<div class="cat-row"><span class="name">'+c+'</span><span>'+money(map[c])+'</span></div>';
+    const subs = tree[c].subs;
+    const subNames = Object.keys(subs).sort(function(a,b){ return subs[b]-subs[a]; });
+    const subRows = subNames.map(function(s){
+      return '<div class="cat-row sub"><span class="name">'+s+'</span><span>'+money(subs[s])+'</span></div>';
+    }).join('');
+    return '<div class="cat-row"><span class="name">'+c+'</span><span>'+money(tree[c].total)+'</span></div>' + subRows;
   }).join('');
 }
 
@@ -604,16 +622,34 @@ function renderMonth(){
     daysList.innerHTML = '<div class="empty">لسه مفيش أيام مسجلة</div>';
   } else {
     let rows = '';
-    keys.forEach(function(k){
+    keys.slice().reverse().forEach(function(k){
       const dateStr = k.replace(STORAGE_KEY_PREFIX, '');
       const items = getDay(k);
       allItems = allItems.concat(items);
       const dayTotal = items.reduce(function(s,it){ return s+it.amount; }, 0);
       monthSum += dayTotal;
       const isToday = k === tKey;
-      rows += '<tr'+(isToday?' class="today"':'')+'><td class="day-name">'+fmtDayLabel(dateStr)+'</td><td>'+money(dayTotal)+'</td></tr>';
+      const tree = buildCategoryTree(items);
+      const cats = Object.keys(tree).sort(function(a,b){ return tree[b].total - tree[a].total; });
+      let inner = '';
+      if(cats.length === 0){
+        inner = '<div class="empty">مفيش مصاريف اليوم ده</div>';
+      } else {
+        inner = cats.map(function(c){
+          const subs = tree[c].subs;
+          const subNames = Object.keys(subs).sort(function(a,b){ return subs[b]-subs[a]; });
+          const subRows = subNames.map(function(s){
+            return '<div class="cat-row sub"><span class="name">'+s+'</span><span>'+money(subs[s])+'</span></div>';
+          }).join('');
+          return '<div class="cat-row"><span class="name">'+c+'</span><span>'+money(tree[c].total)+'</span></div>' + subRows;
+        }).join('');
+      }
+      rows += '<details class="day-details'+(isToday?' today':'')+'">'+
+        '<summary><span class="day-name">'+fmtDayLabel(dateStr)+'</span><span>'+money(dayTotal)+'</span></summary>'+
+        '<div class="day-details-body">'+inner+'</div>'+
+      '</details>';
     });
-    daysList.innerHTML = '<table class="days-table"><thead><tr><th>اليوم</th><th>المصروف</th></tr></thead><tbody>'+rows+'</tbody></table>';
+    daysList.innerHTML = rows;
   }
   document.getElementById('monthTotal').textContent = money(monthSum);
   renderCategoryBreakdown('monthByCat', allItems);
