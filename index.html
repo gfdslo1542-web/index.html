@@ -177,24 +177,23 @@
     background: var(--card);
   }
   .manage-main:last-child { border-bottom: none; }
-  .manage-main.dragging {
-    opacity: 0.55;
-    box-shadow: 0 2px 10px rgba(0,0,0,0.15);
-    border-radius: 8px;
-  }
   .manage-main-row {
     display: flex;
     align-items: center;
     gap: 8px;
   }
   .manage-main-row .mname { flex: 1; font-size: 14px; font-weight: 500; }
-  .drag-handle {
-    font-size: 18px;
-    color: var(--muted);
-    padding: 4px 6px;
-    cursor: grab;
-    touch-action: none;
-    user-select: none;
+  .move-btns {
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+  }
+  .move-btns .icon-btn {
+    padding: 0;
+    height: 16px;
+    line-height: 16px;
+    font-size: 11px;
+    color: var(--accent);
   }
   .icon-btn {
     border: none;
@@ -793,7 +792,10 @@ function renderCatManager(){
     }).join('');
     return '<div class="manage-main" data-main="'+esc(m)+'">'+
       '<div class="manage-main-row">'+
-        '<span class="drag-handle" aria-label="اضغط مطولاً واسحب لإعادة الترتيب">⠿</span>'+
+        '<div class="move-btns">'+
+          '<button class="icon-btn move-up-btn" aria-label="حرك لفوق">▲</button>'+
+          '<button class="icon-btn move-down-btn" aria-label="حرك لتحت">▼</button>'+
+        '</div>'+
         '<span class="mname">'+m+'</span>'+
         '<button class="icon-btn edit-main-btn" aria-label="تعديل">تعديل</button>'+
         '<button class="icon-btn danger del-main-btn" aria-label="حذف">حذف</button>'+
@@ -805,73 +807,46 @@ function renderCatManager(){
   }).join('');
 
   wireCatManagerEvents();
-  wireCatDragHandlers();
+  wireCatMoveButtons();
 }
 
-function commitCategoryOrder(){
+function wireCatMoveButtons(){
   const container = document.getElementById('catManager');
-  const names = Array.prototype.map.call(
-    container.querySelectorAll('.manage-main'),
-    function(el){ return el.getAttribute('data-main'); }
-  );
-  reorderMainCategories(names);
-  const currentMain = (typeof categoryEl !== 'undefined' && categoryEl.value !== NEW_VALUE) ? categoryEl.value : undefined;
-  refreshMainSelect(currentMain);
-}
 
-function wireCatDragHandlers(){
-  const container = document.getElementById('catManager');
-  const rows = Array.prototype.slice.call(container.querySelectorAll('.manage-main'));
-  rows.forEach(function(el){
-    const handle = el.querySelector('.drag-handle');
-    if(!handle) return;
-    let longPressTimer = null;
-    let dragging = false;
-    let startY = 0;
-
-    function cancelLongPress(){
-      if(longPressTimer){ clearTimeout(longPressTimer); longPressTimer = null; }
-    }
-    function endDrag(){
-      cancelLongPress();
-      if(dragging){
-        dragging = false;
-        el.classList.remove('dragging');
-        commitCategoryOrder();
-      }
-    }
-    handle.addEventListener('pointerdown', function(e){
-      startY = e.clientY;
-      cancelLongPress();
-      longPressTimer = setTimeout(function(){
-        dragging = true;
-        el.classList.add('dragging');
-        try{ handle.setPointerCapture(e.pointerId); }catch(err){}
-      }, 350);
-    });
-    handle.addEventListener('pointermove', function(e){
-      if(!dragging){
-        if(Math.abs(e.clientY - startY) > 10) cancelLongPress();
-        return;
-      }
-      e.preventDefault();
-      const siblings = Array.prototype.slice.call(
-        container.querySelectorAll('.manage-main:not(.dragging)')
-      );
-      const y = e.clientY;
-      let target = null;
-      for(let i=0; i<siblings.length; i++){
-        const rect = siblings[i].getBoundingClientRect();
-        if(y < rect.top + rect.height/2){ target = siblings[i]; break; }
-      }
-      if(target){
-        container.insertBefore(el, target);
-      } else {
-        container.appendChild(el);
+  Array.prototype.forEach.call(container.querySelectorAll('.move-up-btn'), function(btn){
+    btn.addEventListener('click', function(){
+      const row = btn.closest('.manage-main');
+      const name = row.getAttribute('data-main');
+      const arr = getCategoriesArr();
+      const idx = arr.findIndex(function(c){ return c.name === name; });
+      if(idx > 0){
+        const tmp = arr[idx-1];
+        arr[idx-1] = arr[idx];
+        arr[idx] = tmp;
+        saveCategoriesArr(arr);
+        const currentMain = (categoryEl.value !== NEW_VALUE) ? categoryEl.value : undefined;
+        refreshMainSelect(currentMain);
+        renderCatManager();
       }
     });
-    handle.addEventListener('pointerup', endDrag);
-    handle.addEventListener('pointercancel', endDrag);
+  });
+
+  Array.prototype.forEach.call(container.querySelectorAll('.move-down-btn'), function(btn){
+    btn.addEventListener('click', function(){
+      const row = btn.closest('.manage-main');
+      const name = row.getAttribute('data-main');
+      const arr = getCategoriesArr();
+      const idx = arr.findIndex(function(c){ return c.name === name; });
+      if(idx !== -1 && idx < arr.length - 1){
+        const tmp = arr[idx+1];
+        arr[idx+1] = arr[idx];
+        arr[idx] = tmp;
+        saveCategoriesArr(arr);
+        const currentMain = (categoryEl.value !== NEW_VALUE) ? categoryEl.value : undefined;
+        refreshMainSelect(currentMain);
+        renderCatManager();
+      }
+    });
   });
 }
 
@@ -1143,3 +1118,4 @@ renderAll();
 </script>
 </body>
 </html>
+
