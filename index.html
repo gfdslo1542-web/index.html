@@ -213,6 +213,48 @@
     font-size: 13px;
   }
   .sub-row .sname { flex: 1; color: var(--muted); }
+  .debt-item {
+    border-bottom: 1px solid var(--border);
+    padding: 12px 0;
+  }
+  .debt-item:last-child { border-bottom: none; }
+  .debt-item.paid-off { opacity: 0.6; }
+  .debt-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 6px;
+  }
+  .debt-header .debt-name { font-size: 14px; font-weight: 600; }
+  .debt-amounts {
+    display: flex;
+    justify-content: space-between;
+    font-size: 12px;
+    color: var(--muted);
+    margin-bottom: 8px;
+  }
+  .debt-amounts b { color: var(--text); font-weight: 600; }
+  .debt-amounts .remaining-positive { color: var(--danger); }
+  .debt-amounts .remaining-zero { color: var(--success); }
+  .debt-pay-row { display: flex; gap: 6px; }
+  .debt-pay-row input { flex: 1; height: 38px; font-size: 14px; }
+  .debt-pay-row button {
+    width: auto;
+    height: 38px;
+    padding: 0 14px;
+    font-size: 13px;
+    border: none;
+    border-radius: 8px;
+    background: var(--btn-gradient);
+    color: var(--btn-text);
+    font-weight: 600;
+    cursor: pointer;
+  }
+  .paid-off-note {
+    font-size: 13px;
+    color: var(--success);
+    font-weight: 600;
+  }
   .edit-row {
     display: flex;
     gap: 6px;
@@ -373,10 +415,29 @@
 </div>
 
 <div class="card">
+  <div class="section-title">الديون</div>
+  <div class="full-row">
+    <input type="text" id="debtNameInput" placeholder="اسم الدين (زي: قرض من أحمد)" />
+  </div>
+  <div class="full-row">
+    <input type="number" id="debtTotalInput" placeholder="المبلغ الكلي" inputmode="decimal" />
+  </div>
+  <button class="save-budget" id="addDebtBtn">+ ضيف دين</button>
+  <div class="err" id="debtErr"></div>
+  <div id="debtsList" style="margin-top: 12px;"></div>
+</div>
+
+<div class="card">
   <details id="catManagerDetails">
     <summary class="section-title" style="cursor:pointer; list-style:none;">تعديل الأنواع والتصنيفات الفرعية ▾</summary>
     <div id="catManager" style="margin-top: 10px;"></div>
   </details>
+</div>
+
+<div class="card">
+  <div class="section-title">تذكير يومي</div>
+  <button class="link-btn" id="enableNotifBtn">فعّل تذكير المصاريف</button>
+  <div class="budget-note" id="notifNote">لو مسجلتش أي مصروف النهاردة وفتحت التطبيق، هيفكرك.</div>
 </div>
 
 <div class="card">
@@ -458,6 +519,32 @@ function getBudget(){
 }
 function setBudget(v){
   try{ localStorage.setItem(bKey, String(v)); }catch(e){}
+}
+
+const DEBTS_KEY = 'expense-debts';
+function getDebts(){
+  try{
+    const raw = localStorage.getItem(DEBTS_KEY);
+    return raw ? JSON.parse(raw) : [];
+  }catch(e){ return []; }
+}
+function setDebts(arr){
+  try{ localStorage.setItem(DEBTS_KEY, JSON.stringify(arr)); }catch(e){}
+}
+function addDebt(name, total){
+  const arr = getDebts();
+  arr.push({ id: 'd' + Date.now() + Math.floor(Math.random()*1000), name: name, total: total, paid: 0 });
+  setDebts(arr);
+}
+function addDebtPayment(id, amount){
+  const arr = getDebts();
+  const d = arr.find(function(x){ return x.id === id; });
+  if(d) d.paid = (d.paid || 0) + amount;
+  setDebts(arr);
+}
+function deleteDebt(id){
+  const arr = getDebts().filter(function(x){ return x.id !== id; });
+  setDebts(arr);
 }
 
 // categories structure (ordered array): [ { name: "مواصلات", subs: ["أوبر","بنزين"] }, { name: "أكل", subs: [] } ]
@@ -772,6 +859,79 @@ function renderBudget(monthSum){
     budgetNote.textContent = '';
   }
 }
+
+function renderDebts(){
+  const debts = getDebts();
+  const el = document.getElementById('debtsList');
+  if(debts.length === 0){
+    el.innerHTML = '<div class="empty">مفيش ديون مسجلة</div>';
+    return;
+  }
+  el.innerHTML = debts.map(function(d){
+    const remaining = d.total - (d.paid || 0);
+    const isPaidOff = remaining <= 0;
+    const remClass = isPaidOff ? 'remaining-zero' : 'remaining-positive';
+    const payRow = isPaidOff
+      ? '<div class="paid-off-note">اتسدد بالكامل ✓</div>'
+      : '<div class="debt-pay-row">'+
+          '<input type="number" class="pay-input" placeholder="سددت كام؟" inputmode="decimal" />'+
+          '<button class="pay-btn">سدد</button>'+
+        '</div>';
+    return '<div class="debt-item'+(isPaidOff?' paid-off':'')+'" data-id="'+d.id+'">'+
+      '<div class="debt-header">'+
+        '<span class="debt-name">'+d.name+'</span>'+
+        '<button class="icon-btn danger del-debt-btn" aria-label="حذف">حذف</button>'+
+      '</div>'+
+      '<div class="debt-amounts">'+
+        '<span>الكلي: <b>'+money(d.total)+'</b></span>'+
+        '<span>مدفوع: <b>'+money(d.paid||0)+'</b></span>'+
+        '<span>الباقي: <b class="'+remClass+'">'+money(Math.max(remaining,0))+'</b></span>'+
+      '</div>'+
+      payRow+
+    '</div>';
+  }).join('');
+
+  Array.prototype.forEach.call(el.querySelectorAll('.del-debt-btn'), function(btn){
+    btn.addEventListener('click', function(){
+      const item = btn.closest('.debt-item');
+      const id = item.getAttribute('data-id');
+      if(confirm('تحذف الدين ده خالص؟')){
+        deleteDebt(id);
+        renderDebts();
+      }
+    });
+  });
+
+  Array.prototype.forEach.call(el.querySelectorAll('.pay-btn'), function(btn){
+    btn.addEventListener('click', function(){
+      const item = btn.closest('.debt-item');
+      const id = item.getAttribute('data-id');
+      const input = item.querySelector('.pay-input');
+      const v = parseFloat(input.value);
+      if(!v || v <= 0) return;
+      addDebtPayment(id, v);
+      renderDebts();
+    });
+  });
+}
+
+document.getElementById('addDebtBtn').addEventListener('click', function(){
+  const nameEl = document.getElementById('debtNameInput');
+  const totalEl = document.getElementById('debtTotalInput');
+  const errEl = document.getElementById('debtErr');
+  const name = nameEl.value.trim();
+  const total = parseFloat(totalEl.value);
+  if(!name || !total || total <= 0){
+    errEl.style.display = 'block';
+    errEl.textContent = 'اكتب اسم الدين والمبلغ الكلي الأول';
+    return;
+  }
+  errEl.style.display = 'none';
+  addDebt(name, total);
+  nameEl.value = '';
+  totalEl.value = '';
+  renderDebts();
+});
 
 function renderCatManager(){
   const arr = getCategoriesArr();
@@ -1112,8 +1272,64 @@ document.getElementById('importFile').addEventListener('change', function(e){
   e.target.value = '';
 });
 
+const NOTIF_ENABLED_KEY = 'expense-notif-enabled';
+const LAST_REMINDER_KEY = 'expense-last-reminder-date';
+
+function isNotifSupported(){ return 'Notification' in window; }
+
+function checkDailyReminder(){
+  if(!isNotifSupported()) return;
+  if(Notification.permission !== 'granted') return;
+  if(localStorage.getItem(NOTIF_ENABLED_KEY) !== '1') return;
+  const today = todayKey();
+  if(localStorage.getItem(LAST_REMINDER_KEY) === today) return;
+  const items = getDay(tKey);
+  if(items.length === 0){
+    try{
+      new Notification('مصاريفي', { body: 'لسه ما سجلتش أي مصروف النهاردة 👀' });
+    }catch(e){}
+    localStorage.setItem(LAST_REMINDER_KEY, today);
+  }
+}
+
+function updateNotifNote(){
+  const note = document.getElementById('notifNote');
+  const btn = document.getElementById('enableNotifBtn');
+  if(!isNotifSupported()){
+    note.textContent = 'المتصفح ده مش بيدعم الإشعارات.';
+    btn.style.display = 'none';
+    return;
+  }
+  if(Notification.permission === 'granted' && localStorage.getItem(NOTIF_ENABLED_KEY) === '1'){
+    note.textContent = 'التذكير شغال، لو تفتح التطبيق ومسجلتش حاجة النهاردة هيفكرك.';
+    btn.textContent = 'التذكير مفعّل ✓';
+  } else if(Notification.permission === 'denied'){
+    note.textContent = 'الإشعارات ممنوعة من إعدادات المتصفح، لازم تسمح بيها من هناك الأول.';
+  } else {
+    note.textContent = 'لو مسجلتش أي مصروف النهاردة وفتحت التطبيق، هيفكرك.';
+  }
+}
+
+document.getElementById('enableNotifBtn').addEventListener('click', function(){
+  if(!isNotifSupported()){
+    document.getElementById('notifNote').textContent = 'المتصفح ده مش بيدعم الإشعارات.';
+    return;
+  }
+  Notification.requestPermission().then(function(perm){
+    if(perm === 'granted'){
+      localStorage.setItem(NOTIF_ENABLED_KEY, '1');
+      checkDailyReminder();
+    }
+    updateNotifNote();
+  });
+});
+
+updateNotifNote();
+checkDailyReminder();
+
 refreshMainSelect();
 renderCatManager();
+renderDebts();
 renderAll();
 </script>
 </body>
