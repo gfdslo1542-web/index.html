@@ -788,6 +788,12 @@ function renderMonth(){
   let monthSum = 0;
   let allItems = [];
   const daysList = document.getElementById('daysList');
+
+  const openKeys = {};
+  Array.prototype.forEach.call(daysList.querySelectorAll('details.day-details[open]'), function(d){
+    openKeys[d.getAttribute('data-key')] = true;
+  });
+
   if(keys.length === 0){
     daysList.innerHTML = '<div class="empty">لسه مفيش أيام مسجلة</div>';
   } else {
@@ -799,27 +805,37 @@ function renderMonth(){
       const dayTotal = items.reduce(function(s,it){ return s+it.amount; }, 0);
       monthSum += dayTotal;
       const isToday = k === tKey;
-      const tree = buildCategoryTree(items);
-      const cats = Object.keys(tree).sort(function(a,b){ return tree[b].total - tree[a].total; });
       let inner = '';
-      if(cats.length === 0){
+      if(items.length === 0){
         inner = '<div class="empty">مفيش مصاريف اليوم ده</div>';
       } else {
-        inner = cats.map(function(c){
-          const subs = tree[c].subs;
-          const subNames = Object.keys(subs).sort(function(a,b){ return subs[b]-subs[a]; });
-          const subRows = subNames.map(function(s){
-            return '<div class="cat-row sub"><span class="name">'+s+'</span><span>'+money(subs[s])+'</span></div>';
-          }).join('');
-          return '<div class="cat-row"><span class="name">'+c+'</span><span>'+money(tree[c].total)+'</span></div>' + subRows;
+        inner = items.map(function(it, i){
+          const subLine = it.subcategory ? '<div class="cat-tag">'+it.subcategory+'</div>' : '';
+          return '<div class="item">'+
+            '<div><div class="desc-main">'+it.category+'</div>'+subLine+'</div>'+
+            '<div class="right"><span class="amt">'+money(it.amount)+'</span>'+
+            '<button class="del-btn del-day-item-btn" data-key="'+k+'" data-i="'+i+'" aria-label="حذف">×</button></div>'+
+          '</div>';
         }).join('');
       }
-      rows += '<details class="day-details'+(isToday?' today':'')+'">'+
+      const openAttr = openKeys[k] ? ' open' : '';
+      rows += '<details class="day-details'+(isToday?' today':'')+'" data-key="'+k+'"'+openAttr+'>'+
         '<summary><span class="day-name">'+fmtDayLabel(dateStr)+'</span><span>'+money(dayTotal)+'</span></summary>'+
         '<div class="day-details-body">'+inner+'</div>'+
       '</details>';
     });
     daysList.innerHTML = rows;
+
+    Array.prototype.forEach.call(daysList.querySelectorAll('.del-day-item-btn'), function(btn){
+      btn.addEventListener('click', function(){
+        const key = btn.getAttribute('data-key');
+        const idx = parseInt(btn.getAttribute('data-i'));
+        const dayItems = getDay(key);
+        dayItems.splice(idx, 1);
+        setDay(key, dayItems);
+        renderAll();
+      });
+    });
   }
   document.getElementById('monthTotal').textContent = money(monthSum);
   renderCategoryBreakdown('monthByCat', allItems);
@@ -909,8 +925,21 @@ function renderDebts(){
       const input = item.querySelector('.pay-input');
       const v = parseFloat(input.value);
       if(!v || v <= 0) return;
+
+      const debts = getDebts();
+      const debt = debts.find(function(x){ return x.id === id; });
+      const debtName = debt ? debt.name : 'دين';
+
       addDebtPayment(id, v);
+      saveMainCategory('سداد ديون');
+      const cur = getDay(tKey);
+      cur.push({ amount: v, category: 'سداد ديون', subcategory: debtName });
+      setDay(tKey, cur);
+
+      const currentMain = (categoryEl.value !== NEW_VALUE) ? categoryEl.value : undefined;
+      refreshMainSelect(currentMain);
       renderDebts();
+      renderAll();
     });
   });
 }
