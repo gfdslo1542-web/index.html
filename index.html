@@ -1,4 +1,4 @@
-<!DOCTYPE html>
+here<!DOCTYPE html>
 <html lang="ar" dir="rtl">
 <head>
 <meta charset="UTF-8">
@@ -415,6 +415,11 @@
 </div>
 
 <div class="card">
+  <div class="section-title">الشهور السابقة</div>
+  <div id="pastMonthsList"></div>
+</div>
+
+<div class="card">
   <div class="section-title">الديون</div>
   <div class="full-row">
     <input type="text" id="debtNameInput" placeholder="اسم الدين (زي: قرض من أحمد)" />
@@ -465,6 +470,13 @@ function isLastDayOfMonth(){
   const d = new Date();
   const lastDay = new Date(d.getFullYear(), d.getMonth()+1, 0).getDate();
   return d.getDate() === lastDay;
+}
+function previousMonthKey(){
+  const d = new Date();
+  let y = d.getFullYear();
+  let m = d.getMonth(); // 0-indexed; previous month index = m-1
+  if(m === 0){ m = 11; y -= 1; } else { m = m - 1; }
+  return y + '-' + pad(m+1);
 }
 const STORAGE_KEY_PREFIX = 'expenses-';
 const CATS_KEY = 'expense-categories-v3';
@@ -519,6 +531,32 @@ function getBudget(){
 }
 function setBudget(v){
   try{ localStorage.setItem(bKey, String(v)); }catch(e){}
+}
+
+function sumMonthPrefix(prefix){
+  let sum = 0;
+  getAllExpenseKeys().forEach(function(k){
+    if(k.indexOf(prefix) === 0){
+      sum += getDay(k).reduce(function(s,it){ return s+it.amount; }, 0);
+    }
+  });
+  return sum;
+}
+
+function carryOverBudgetIfNewMonth(){
+  if(getBudget() !== null) return; // already set for this month, never override
+  const prevMonthStr = previousMonthKey();
+  const prevBudgetKey = BUDGET_KEY_PREFIX + prevMonthStr;
+  let prevBudgetRaw = null;
+  try{ prevBudgetRaw = localStorage.getItem(prevBudgetKey); }catch(e){}
+  if(prevBudgetRaw === null) return;
+  const prevBudget = parseFloat(prevBudgetRaw);
+  if(isNaN(prevBudget)) return;
+  const prevSpent = sumMonthPrefix('expenses-' + prevMonthStr + '-');
+  const leftover = prevBudget - prevSpent;
+  if(leftover > 0){
+    setBudget(leftover);
+  }
 }
 
 const DEBTS_KEY = 'expense-debts';
@@ -727,6 +765,63 @@ function buildCategoryTree(items){
     }
   });
   return tree;
+}
+
+function fmtMonthLabelFor(monthStr){
+  const parts = monthStr.split('-').map(Number);
+  return arabicMonths[parts[1]-1] + ' ' + parts[0];
+}
+
+function renderPastMonths(){
+  const container = document.getElementById('pastMonthsList');
+  const current = currentMonthKey();
+  const months = {};
+  getAllExpenseKeys().forEach(function(k){
+    const rest = k.replace(STORAGE_KEY_PREFIX, '');
+    const monthPart = rest.substring(0, 7);
+    if(monthPart !== current) months[monthPart] = true;
+  });
+  const monthList = Object.keys(months).sort().reverse();
+  if(monthList.length === 0){
+    container.innerHTML = '<div class="empty">مفيش شهور سابقة لسه</div>';
+    return;
+  }
+  container.innerHTML = monthList.map(function(mStr){
+    const prefix = 'expenses-' + mStr + '-';
+    let items = [];
+    getAllExpenseKeys().forEach(function(k){
+      if(k.indexOf(prefix) === 0) items = items.concat(getDay(k));
+    });
+    const total = items.reduce(function(s,it){ return s+it.amount; }, 0);
+    const tree = buildCategoryTree(items);
+    const cats = Object.keys(tree).sort(function(a,b){ return tree[b].total - tree[a].total; });
+    let catsHtml = cats.map(function(c){
+      const subs = tree[c].subs;
+      const subNames = Object.keys(subs).sort(function(a,b){ return subs[b]-subs[a]; });
+      const subRows = subNames.map(function(s){
+        return '<div class="cat-row sub"><span class="name">'+s+'</span><span>'+money(subs[s])+'</span></div>';
+      }).join('');
+      return '<div class="cat-row"><span class="name">'+c+'</span><span>'+money(tree[c].total)+'</span></div>' + subRows;
+    }).join('');
+    if(cats.length === 0) catsHtml = '<div class="empty">مفيش مصاريف</div>';
+
+    let budgetRaw = null;
+    try{ budgetRaw = localStorage.getItem(BUDGET_KEY_PREFIX + mStr); }catch(e){}
+    let budgetLine = '';
+    if(budgetRaw !== null){
+      const budgetVal = parseFloat(budgetRaw);
+      if(!isNaN(budgetVal)){
+        const leftover = budgetVal - total;
+        budgetLine = '<div class="cat-row"><span class="name">مبلغ الشهر</span><span>'+money(budgetVal)+'</span></div>'+
+          '<div class="cat-row"><span class="name">'+(leftover>=0?'وفرت':'صرفت زيادة')+'</span><span>'+money(Math.abs(leftover))+'</span></div>';
+      }
+    }
+
+    return '<details class="cat-details">'+
+      '<summary><span class="name">'+fmtMonthLabelFor(mStr)+'</span><span>'+money(total)+'</span></summary>'+
+      '<div class="cat-details-body">'+budgetLine+catsHtml+'</div>'+
+    '</details>';
+  }).join('');
 }
 
 function renderCategoryBreakdown(elId, items){
@@ -1356,11 +1451,13 @@ document.getElementById('enableNotifBtn').addEventListener('click', function(){
 updateNotifNote();
 checkDailyReminder();
 
+carryOverBudgetIfNewMonth();
+
 refreshMainSelect();
 renderCatManager();
 renderDebts();
+renderPastMonths();
 renderAll();
 </script>
 </body>
 </html>
-
