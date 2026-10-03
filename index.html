@@ -1,11 +1,19 @@
-here<!DOCTYPE html>
+<!DOCTYPE html>
 <html lang="ar" dir="rtl">
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0">
 <title>مصاريفي</title>
+<script>
+  (function(){
+    try{
+      var t = localStorage.getItem('expense-theme-pref');
+      if(t) document.documentElement.setAttribute('data-theme', t);
+    }catch(e){}
+  })();
+</script>
 <style>
-  :root {
+  :root, [data-theme="whatsapp"] {
     --bg: #ece5dd;
     --card: #ffffff;
     --text: #111b21;
@@ -21,6 +29,74 @@ here<!DOCTYPE html>
     --btn-text: #ffffff;
     --budget-gradient: #dcf8c6;
     --input-bg: #f7f7f5;
+  }
+  [data-theme="dark"] {
+    --bg: #1b2430;
+    --card: #26313f;
+    --text: #eef1f5;
+    --muted: #93a1b0;
+    --border: #37475a;
+    --accent: #e08b2c;
+    --accent-dark: #c96a1f;
+    --header: #e08b2c;
+    --danger: #e0533c;
+    --success: #3fae7a;
+    --bg-gradient: linear-gradient(160deg, #10161f 0%, #1b2430 50%, #232d3a 100%);
+    --btn-gradient: linear-gradient(90deg, #e08b2c, #c96a1f);
+    --btn-text: #14181f;
+    --budget-gradient: linear-gradient(90deg, #2a2015, #1f2a37);
+    --input-bg: #1f2a37;
+  }
+  [data-theme="sky"] {
+    --bg: #eaf3fb;
+    --card: #ffffff;
+    --text: #14263b;
+    --muted: #5c7690;
+    --border: #cfe3f5;
+    --accent: #1768ad;
+    --accent-dark: #124d85;
+    --header: #1768ad;
+    --danger: #b3402f;
+    --success: #0f7a5c;
+    --bg-gradient: linear-gradient(160deg, #eaf3fb 0%, #f3f9ff 50%, #ffffff 100%);
+    --btn-gradient: linear-gradient(90deg, #1768ad, #124d85);
+    --btn-text: #ffffff;
+    --budget-gradient: linear-gradient(90deg, #eaf3fb, #f6fbff);
+    --input-bg: #f4f9fd;
+  }
+  [data-theme="vibrant"] {
+    --bg: #fff2e6;
+    --card: #ffffff;
+    --text: #2b2140;
+    --muted: #8c7fae;
+    --border: #f0e0ff;
+    --accent: #8b3ff0;
+    --accent-dark: #6f2fc4;
+    --header: #8b3ff0;
+    --danger: #f4436c;
+    --success: #17b890;
+    --bg-gradient: linear-gradient(160deg, #ffe6f0 0%, #fff2e6 45%, #e6f7ff 100%);
+    --btn-gradient: linear-gradient(90deg, #8b3ff0, #f4436c);
+    --btn-text: #ffffff;
+    --budget-gradient: linear-gradient(90deg, #fdeaff, #fff0e0);
+    --input-bg: #fbf6ff;
+  }
+  [data-theme="forest"] {
+    --bg: #eef3ea;
+    --card: #ffffff;
+    --text: #223324;
+    --muted: #71876f;
+    --border: #dbe6d6;
+    --accent: #2f7d52;
+    --accent-dark: #236440;
+    --header: #2f7d52;
+    --danger: #c05a3c;
+    --success: #2f7d52;
+    --bg-gradient: linear-gradient(160deg, #eef3ea 0%, #f4f7ef 50%, #ffffff 100%);
+    --btn-gradient: linear-gradient(90deg, #2f7d52, #236440);
+    --btn-text: #ffffff;
+    --budget-gradient: linear-gradient(90deg, #eaf3e6, #f6faf2);
+    --input-bg: #f5f8f2;
   }
   * { box-sizing: border-box; }
   body {
@@ -43,6 +119,17 @@ here<!DOCTYPE html>
     margin: 0;
     color: var(--header);
     letter-spacing: 0.3px;
+  }
+  .theme-select-wrap {
+    display: flex;
+    align-items: center;
+  }
+  #themeSelect {
+    width: auto;
+    height: 38px;
+    font-size: 13px;
+    padding: 0 8px;
+    border-radius: 10px;
   }
   .card {
     background: var(--card);
@@ -332,7 +419,18 @@ here<!DOCTYPE html>
 </head>
 <body>
 
-<h1>مصاريفي</h1>
+<div class="top-row">
+  <h1>مصاريفي</h1>
+  <div class="theme-select-wrap">
+    <select id="themeSelect" aria-label="اختار الثيم">
+      <option value="whatsapp">واتساب</option>
+      <option value="dark">غامق</option>
+      <option value="sky">أزرق فاتح</option>
+      <option value="vibrant">مبهج</option>
+      <option value="forest">طبيعي</option>
+    </select>
+  </div>
+</div>
 
 <div class="card">
   <div class="section-title" id="budgetLabel">مبلغ الشهر</div>
@@ -1425,39 +1523,4 @@ function updateNotifNote(){
     return;
   }
   if(Notification.permission === 'granted' && localStorage.getItem(NOTIF_ENABLED_KEY) === '1'){
-    note.textContent = 'التذكير شغال، لو تفتح التطبيق ومسجلتش حاجة النهاردة هيفكرك.';
-    btn.textContent = 'التذكير مفعّل ✓';
-  } else if(Notification.permission === 'denied'){
-    note.textContent = 'الإشعارات ممنوعة من إعدادات المتصفح، لازم تسمح بيها من هناك الأول.';
-  } else {
-    note.textContent = 'لو مسجلتش أي مصروف النهاردة وفتحت التطبيق، هيفكرك.';
-  }
-}
-
-document.getElementById('enableNotifBtn').addEventListener('click', function(){
-  if(!isNotifSupported()){
-    document.getElementById('notifNote').textContent = 'المتصفح ده مش بيدعم الإشعارات.';
-    return;
-  }
-  Notification.requestPermission().then(function(perm){
-    if(perm === 'granted'){
-      localStorage.setItem(NOTIF_ENABLED_KEY, '1');
-      checkDailyReminder();
-    }
-    updateNotifNote();
-  });
-});
-
-updateNotifNote();
-checkDailyReminder();
-
-carryOverBudgetIfNewMonth();
-
-refreshMainSelect();
-renderCatManager();
-renderDebts();
-renderPastMonths();
-renderAll();
-</script>
-</body>
-</html>
+    note.textContent = 'التذكير شغال، لو
